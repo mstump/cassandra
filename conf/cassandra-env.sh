@@ -158,15 +158,6 @@ esac
 # Set this to control the amount of arenas per-thread in glibc
 #export MALLOC_ARENA_MAX=4
 
-if [ "x$MAX_HEAP_SIZE" = "x" ] && [ "x$HEAP_NEWSIZE" = "x" ]; then
-    calculate_heap_sizes
-else
-    # if [ "x$MAX_HEAP_SIZE" = "x" ] ||  [ "x$HEAP_NEWSIZE" = "x" ]; then
-    #     echo "please set or unset MAX_HEAP_SIZE and HEAP_NEWSIZE in pairs (see cassandra-env.sh)"
-    #     exit 1
-    # fi
-fi
-
 if [ "x$MALLOC_ARENA_MAX" = "x" ]
 then
     export MALLOC_ARENA_MAX=4
