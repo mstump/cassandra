@@ -1,3 +1,15 @@
+MAX_HEAP_SIZE="16G"
+JVM_OPTS="$JVM_OPTS -server"
+JVM_OPTS="$JVM_OPTS -XX:-UseBiasedLocking"
+JVM_OPTS="$JVM_OPTS -XX:+UnlockDiagnosticVMOptions"
+JVM_OPTS="$JVM_OPTS -XX:+UseGCTaskAffinity"
+JVM_OPTS="$JVM_OPTS -XX:+BindGCTaskThreadsToCPUs"
+JVM_OPTS="$JVM_OPTS -XX:ParGCCardsPerStrideChunk=32768"
+JVM_OPTS="$JVM_OPTS -XX:+UseG1GC"
+JVM_OPTS="$JVM_OPTS -XX:ParallelGCThreads=20"
+JVM_OPTS="$JVM_OPTS -XX:ConcGCThreads=5"
+JVM_OPTS="$JVM_OPTS -XX:MaxGCPauseMillis=200"
+
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -170,7 +182,7 @@ JMX_PORT="7199"
 
 # enable assertions.  disabling this in production will give a modest
 # performance benefit (around 5%).
-JVM_OPTS="$JVM_OPTS -ea"
+# JVM_OPTS="$JVM_OPTS -ea"
 
 # add the jamm javaagent
 JVM_OPTS="$JVM_OPTS -javaagent:$CASSANDRA_HOME/lib/jamm-0.2.8.jar"
