@@ -2,7 +2,7 @@
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
+ * regarding copyright ownership.  The ASF licenses this CfDeffile
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
@@ -126,6 +126,7 @@ public final class CFMetaData
     public final static SpeculativeRetry DEFAULT_SPECULATIVE_RETRY = new SpeculativeRetry(SpeculativeRetry.RetryType.PERCENTILE, 0.99);
     public final static int DEFAULT_MIN_INDEX_INTERVAL = 128;
     public final static int DEFAULT_MAX_INDEX_INTERVAL = 2048;
+    public final static boolean DEFAULT_BUFFER_POPULATE_OPEN = false;
 
     // Note that this is the default only for user created tables
     public final static String DEFAULT_COMPRESSOR = LZ4Compressor.class.getCanonicalName();
@@ -182,6 +183,7 @@ public final class CFMetaData
                                                                     + "index_interval int,"
                                                                     + "min_index_interval int,"
                                                                     + "max_index_interval int,"
+                                                                    + "buffer_populate_open boolean,"
                                                                     + "dropped_columns map<text, bigint>,"
                                                                     + "PRIMARY KEY (keyspace_name, columnfamily_name)"
                                                                     + ") WITH COMMENT='ColumnFamily definitions' AND gc_grace_seconds=604800");
@@ -445,6 +447,7 @@ public final class CFMetaData
     private volatile int maxIndexInterval = DEFAULT_MAX_INDEX_INTERVAL;
     private volatile int memtableFlushPeriod = 0;
     private volatile int defaultTimeToLive = DEFAULT_DEFAULT_TIME_TO_LIVE;
+    private volatile boolean bufferPopulateOpen = DEFAULT_BUFFER_POPULATE_OPEN;
     private volatile SpeculativeRetry speculativeRetry = DEFAULT_SPECULATIVE_RETRY;
     private volatile Map<ColumnIdentifier, Long> droppedColumns = new HashMap<>();
     private volatile Map<String, TriggerDefinition> triggers = new HashMap<>();
@@ -495,6 +498,7 @@ public final class CFMetaData
     public CFMetaData maxIndexInterval(int prop) {maxIndexInterval = prop; return this;}
     public CFMetaData memtableFlushPeriod(int prop) {memtableFlushPeriod = prop; return this;}
     public CFMetaData defaultTimeToLive(int prop) {defaultTimeToLive = prop; return this;}
+    public CFMetaData bufferPopulateOpen(boolean prop) {bufferPopulateOpen = prop; return this;}
     public CFMetaData speculativeRetry(SpeculativeRetry prop) {speculativeRetry = prop; return this;}
     public CFMetaData droppedColumns(Map<ColumnIdentifier, Long> cols) {droppedColumns = cols; return this;}
     public CFMetaData triggers(Map<String, TriggerDefinition> prop) {triggers = prop; return this;}
@@ -676,6 +680,7 @@ public final class CFMetaData
                       .droppedColumns(new HashMap<>(oldCFMD.droppedColumns))
                       .triggers(new HashMap<>(oldCFMD.triggers))
                       .isDense(oldCFMD.isDense)
+                      .bufferPopulateOpen(oldCFMD.bufferPopulateOpen)
                       .rebuild();
     }
 
@@ -745,6 +750,11 @@ public final class CFMetaData
     public int getGcGraceSeconds()
     {
         return gcGraceSeconds;
+    }
+
+    public boolean getBufferPopulateOpen()
+    {
+        return bufferPopulateOpen;
     }
 
     public AbstractType<?> getDefaultValidator()
@@ -940,7 +950,8 @@ public final class CFMetaData
             && Objects.equal(speculativeRetry, other.speculativeRetry)
             && Objects.equal(droppedColumns, other.droppedColumns)
             && Objects.equal(triggers, other.triggers)
-            && Objects.equal(isDense, other.isDense);
+            && Objects.equal(isDense, other.isDense)
+            && Objects.equal(bufferPopulateOpen, other.bufferPopulateOpen);
     }
 
     @Override
@@ -974,6 +985,7 @@ public final class CFMetaData
             .append(droppedColumns)
             .append(triggers)
             .append(isDense)
+            .append(bufferPopulateOpen)
             .toHashCode();
     }
 
@@ -1022,6 +1034,8 @@ public final class CFMetaData
             // ensure the max is at least as large as the min
             cf_def.setMax_index_interval(Math.max(cf_def.min_index_interval, CFMetaData.DEFAULT_MAX_INDEX_INTERVAL));
         }
+        if (!cf_def.isSetBuffer_populate_open())
+            cf_def.setBuffer_populate_open(CFMetaData.DEFAULT_BUFFER_POPULATE_OPEN);
     }
 
     public static CFMetaData fromThrift(CfDef cf_def) throws InvalidRequestException, ConfigurationException
@@ -1090,6 +1104,8 @@ public final class CFMetaData
                 newCFMD.keyValidator(keyValidator);
             if (cf_def.isSetGc_grace_seconds())
                 newCFMD.gcGraceSeconds(cf_def.gc_grace_seconds);
+            if (cf_def.isBuffer_populate_open())
+                newCFMD.bufferPopulateOpen(cf_def.buffer_populate_open);
             if (cf_def.isSetMin_compaction_threshold())
                 newCFMD.minCompactionThreshold(cf_def.min_compaction_threshold);
             if (cf_def.isSetMax_compaction_threshold())
@@ -1198,10 +1214,12 @@ public final class CFMetaData
         readRepairChance = cfm.readRepairChance;
         dcLocalReadRepairChance = cfm.dcLocalReadRepairChance;
         gcGraceSeconds = cfm.gcGraceSeconds;
+        bufferPopulateOpen = cfm.bufferPopulateOpen;
         defaultValidator = cfm.defaultValidator;
         keyValidator = cfm.keyValidator;
         minCompactionThreshold = cfm.minCompactionThreshold;
         maxCompactionThreshold = cfm.maxCompactionThreshold;
+        bufferPopulateOpen = cfm.bufferPopulateOpen;
 
         bloomFilterFpChance = cfm.bloomFilterFpChance;
         caching = cfm.caching;
@@ -1339,6 +1357,7 @@ public final class CFMetaData
         def.setRead_repair_chance(readRepairChance);
         def.setDclocal_read_repair_chance(dcLocalReadRepairChance);
         def.setGc_grace_seconds(gcGraceSeconds);
+        def.setBuffer_populate_open(bufferPopulateOpen);
         def.setDefault_validation_class(defaultValidator == null ? null : defaultValidator.toString());
         def.setKey_validation_class(keyValidator.toString());
         def.setMin_compaction_threshold(minCompactionThreshold);
@@ -1749,6 +1768,7 @@ public final class CFMetaData
             adder.addMapEntry("dropped_columns", entry.getKey().toString(), entry.getValue());
 
         adder.add("is_dense", isDense);
+        adder.add("buffer_populate_open", bufferPopulateOpen);
 
         // Save the CQL3 metadata "the old way" for compatibility sake
         adder.add("key_aliases", aliasesToJson(partitionKeyColumns));
@@ -1836,6 +1856,10 @@ public final class CFMetaData
 
             if (result.has("dropped_columns"))
                 cfm.droppedColumns(convertDroppedColumns(result.getMap("dropped_columns", UTF8Type.instance, LongType.instance)));
+
+            cfm.bufferPopulateOpen(result.has("buffer_populate_open")
+                                   ? result.getBoolean("buffer_populate_open")
+                                   : DEFAULT_BUFFER_POPULATE_OPEN);
 
             for (ColumnDefinition cd : columnDefs)
                 cfm.addOrReplaceColumnDefinition(cd);
@@ -2282,6 +2306,7 @@ public final class CFMetaData
             .append("readRepairChance", readRepairChance)
             .append("dcLocalReadRepairChance", dcLocalReadRepairChance)
             .append("gcGraceSeconds", gcGraceSeconds)
+            .append("bufferPopulateOpen", bufferPopulateOpen)
             .append("defaultValidator", defaultValidator)
             .append("keyValidator", keyValidator)
             .append("minCompactionThreshold", minCompactionThreshold)

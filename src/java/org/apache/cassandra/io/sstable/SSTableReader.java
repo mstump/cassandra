@@ -514,6 +514,10 @@ public class SSTableReader extends SSTable
             readMeterSyncFuture = null;
             return;
         }
+        else if (metadata.getBufferPopulateOpen())
+        {
+            CLibrary.tryCache(descriptor.filenameFor(Component.DATA), 0, 0);
+        }
 
         readMeter = SystemKeyspace.getSSTableReadMeter(desc.ksname, desc.cfname, desc.generation);
         // sync the average read rate to system.sstable_activity every five minutes, starting one minute from now

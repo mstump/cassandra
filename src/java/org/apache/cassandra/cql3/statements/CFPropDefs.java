@@ -45,6 +45,7 @@ public class CFPropDefs extends PropertyDefinitions
     public static final String KW_SPECULATIVE_RETRY = "speculative_retry";
     public static final String KW_BF_FP_CHANCE = "bloom_filter_fp_chance";
     public static final String KW_MEMTABLE_FLUSH_PERIOD = "memtable_flush_period_in_ms";
+    public static final String KW_BUFFER_POPULATE_OPEN = "buffer_populate_open";
 
     public static final String KW_COMPACTION = "compaction";
     public static final String KW_COMPRESSION = "compression";
@@ -69,6 +70,7 @@ public class CFPropDefs extends PropertyDefinitions
         keywords.add(KW_COMPACTION);
         keywords.add(KW_COMPRESSION);
         keywords.add(KW_MEMTABLE_FLUSH_PERIOD);
+        keywords.add(KW_BUFFER_POPULATE_OPEN);
 
         obsoleteKeywords.add("index_interval");
         obsoleteKeywords.add("replicate_on_write");
@@ -182,6 +184,7 @@ public class CFPropDefs extends PropertyDefinitions
         cfm.defaultTimeToLive(getInt(KW_DEFAULT_TIME_TO_LIVE, cfm.getDefaultTimeToLive()));
         cfm.speculativeRetry(CFMetaData.SpeculativeRetry.fromString(getString(KW_SPECULATIVE_RETRY, cfm.getSpeculativeRetry().toString())));
         cfm.memtableFlushPeriod(getInt(KW_MEMTABLE_FLUSH_PERIOD, cfm.getMemtableFlushPeriod()));
+        cfm.bufferPopulateOpen(getBoolean(KW_BUFFER_POPULATE_OPEN, cfm.getBufferPopulateOpen()));
         cfm.minIndexInterval(getInt(KW_MIN_INDEX_INTERVAL, cfm.getMinIndexInterval()));
         cfm.maxIndexInterval(getInt(KW_MAX_INDEX_INTERVAL, cfm.getMaxIndexInterval()));
 

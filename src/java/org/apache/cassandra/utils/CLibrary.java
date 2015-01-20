@@ -20,6 +20,7 @@ package org.apache.cassandra.utils;
 import java.io.FileDescriptor;
 import java.io.RandomAccessFile;
 import java.lang.reflect.Field;
+import java.nio.file.FileSystems;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -140,6 +141,56 @@ public final class CLibrary
         }
     }
 
+    private static boolean isPosix()
+    {
+        return FileSystems.getDefault().supportedFileAttributeViews().contains("posix");
+    }
+
+    public static void tryCache(String path, long offset, long len)
+    {
+        tryCache(getfd(path), offset, len);
+    }
+
+    public static void tryCache(int fd, long offset, long len)
+    {
+        if (len == 0)
+            tryCache(fd, 0, 0);
+
+        while (len > 0)
+        {
+            int sublen = (int) Math.min(Integer.MAX_VALUE, len);
+            tryCache(fd, offset, sublen);
+            len -= sublen;
+            offset -= sublen;
+        }
+    }
+
+    public static void tryCache(int fd, long offset, int len)
+    {
+        if (fd < 0)
+            return;
+
+        try
+        {
+            if (isPosix())
+            {
+                posix_fadvise(fd, offset, len, POSIX_FADV_SEQUENTIAL);
+            }
+        }
+        catch (UnsatisfiedLinkError e)
+        {
+            // if JNA is unavailable just skipping Direct I/O
+            // instance of this class will act like normal RandomAccessFile
+        }
+        catch (RuntimeException e)
+        {
+            if (!(e instanceof LastErrorException))
+                throw e;
+
+            logger.warn(String.format("posix_fadvise(%d, %d) failed, errno (%d).", fd, offset, errno(e)));
+        }
+    }
+
     public static void trySkipCache(String path, long offset, long len)
     {
         trySkipCache(getfd(path), offset, len);
@@ -166,7 +217,7 @@ public final class CLibrary
 
         try
         {
-            if (System.getProperty("os.name").toLowerCase().contains("linux"))
+            if (isPosix())
             {
                 posix_fadvise(fd, offset, len, POSIX_FADV_DONTNEED);
             }
